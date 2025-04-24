@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Etkinlik Formu</title>
+  <?!= include('CSS'); ?>
+</head>
+<body>
+  <div class="container">
+    <form id="etkinlikForm">
+      <!-- E-posta Alanı -->
+      <div class="form-group">
+        <label class="form-label" for="eposta">Kurum E-postasını giriniz:</label>
+        <div>
+          <input type="email" id="eposta" name="eposta" class="form-control" placeholder="...@aile.gov.tr">
+        </div>
+      </div>
+      
+      <div id="form-detay" class="hidden">
+        <!-- İl/İlçe/Mahalle Bilgileri -->
+        <div class="form-section">
+          <h3>Konum Bilgileri</h3>
+          
+          <!-- İl Seçimi -->
+          <div class="form-group">
+            <label class="form-label" for="il">İl:</label>
+            <div>
+              <select id="il" name="il" class="form-control" required></select>
+            </div>
+          </div>
+          
+          <!-- İlçe Seçimi -->
+          <div class="form-group">
+            <label class="form-label" for="ilce">İlçe:</label>
+            <div>
+              <select id="ilce" name="ilce" class="form-control" required></select>
+            </div>
+          </div>
+          
+          <!-- Mahalle Seçimi -->
+          <div class="form-group">
+            <label class="form-label" for="mahalle">Mahalle (CTRL'ye basılı tutarak birden fazla seçebilirsiniz):</label>
+            <div>
+              <select id="mahalle" name="mahalle" class="form-control" multiple size="5"></select>
+              <input type="text" id="mahalle-diger" name="mahalle-diger" class="form-control hidden" placeholder="Belirtiniz" style="margin-top: 10px;">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Etkinlik Bilgileri -->
+        <div class="form-section">
+          <h3>Etkinlik Bilgileri</h3>
+          
+          <!-- Etkinlik Türü Seçimi -->
+          <div class="form-group">
+            <label class="form-label" for="etkinlik-turu-container">Etkinlik Türü:</label>
+            <div id="etkinlik-turu-container" class="radio-container"></div>
+          </div>
+          
+          <!-- Diğer Etkinlik Türü -->
+          <div id="etkinlik-diger-container" class="form-group hidden">
+            <label class="form-label" for="etkinlik-diger">Belirtiniz:</label>
+            <div>
+              <input type="text" id="etkinlik-diger" name="etkinlik-diger" class="form-control" placeholder="Etkinlik türünü belirtiniz">
+            </div>
+          </div>
+          
+          <!-- Etkinlik Adı -->
+          <div class="form-group">
+            <label class="form-label" for="etkinlik-adi">Etkinlik Adı:</label>
+            <div>
+              <input type="text" id="etkinlik-adi" name="etkinlik-adi" class="form-control" placeholder="Etkinlik adını giriniz">
+            </div>
+          </div>
+          
+          <!-- Etkinlik Özeti -->
+          <div class="form-group">
+            <label class="form-label" for="etkinlik-ozeti">Etkinlik Özeti:</label>
+            <div>
+              <textarea id="etkinlik-ozeti" name="etkinlik-ozeti" class="form-control text-area" rows="8" placeholder="En az 100 harf giriniz"></textarea>
+            </div>
+          </div>
+          
+          <!-- Fotoğraf Yükleme Bölümü -->
+          <div class="form-section">
+            <h3>Etkinlik Fotoğrafları (Maksimum 10MB, png, jpg, jpeg gibi formatlar kabul edilir):</h3>
+            <div class="photo-container">
+              <!-- 1. Fotoğraf -->
+              <div class="photo-column">
+                <img id="preview1" class="preview-image hidden" alt="Fotoğraf önizleme">
+                <button type="button" id="uploadButton1" class="upload-button">
+                  1. fotoğrafı yüklemek için tıklayınız
+                </button>
+                <input type="file" id="fileInput1" class="hidden" accept="image/*">
+                <div id="status1" class="status-message"></div>
+              </div>
+
+              <!-- 2. Fotoğraf -->
+              <div class="photo-column">
+                <img id="preview2" class="preview-image hidden" alt="Fotoğraf önizleme">
+                <button type="button" id="uploadButton2" class="upload-button">
+                  2. fotoğrafı yüklemek için tıklayınız
+                </button>
+                <input type="file" id="fileInput2" class="hidden" accept="image/*">
+                <div id="status2" class="status-message"></div>
+              </div>
+
+              <!-- 3. Fotoğraf -->
+              <div class="photo-column">
+                <img id="preview3" class="preview-image hidden" alt="Fotoğraf önizleme">
+                <button type="button" id="uploadButton3" class="upload-button">
+                  3. fotoğrafı yüklemek için tıklayınız
+                </button>
+                <input type="file" id="fileInput3" class="hidden" accept="image/*">
+                <div id="status3" class="status-message"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Etkinlik Tarihi -->
+          <div class="form-group">
+            <label class="form-label" for="etkinlik-tarihi">Etkinlik Tarihi:</label>
+            <div>
+              <input type="date" id="etkinlik-tarihi" name="etkinlik-tarihi" class="form-control">
+            </div>
+          </div>
+          
+          <!-- Katılan Kişi Sayısı -->
+          <div class="form-group">
+            <label class="form-label" for="katilan-kisi-sayisi">Katılan Kişi Sayısı:</label>
+            <div>
+              <input type="number" id="katilan-kisi-sayisi" name="katilan-kisi-sayisi" class="form-control" placeholder="Sayı giriniz">
+            </div>
+          </div>
+          
+          <!-- Bütçe -->
+          <div class="form-group">
+            <label class="form-label" for="butce">Bütçe(TL cinsinden):</label>
+            <div>
+              <input type="number" id="butce" name="butce" class="form-control" placeholder="Sayı giriniz">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Kurum ve STK Bilgileri -->
+        <div class="form-section">
+          <h3>Kurum ve STK Bilgileri</h3>
+          
+          <!-- Kurum Seçimi -->
+          <div class="form-group">
+            <label class="form-label" for="kurum-listesi">İşbirliği Yapılan Kurumlar (CTRL'ye basılı tutarak birden fazla seçebilirsiniz):</label>
+            <div>
+              <select id="kurum-listesi" name="kurum-listesi" class="form-control" multiple size="8"></select>
+            </div>
+          </div>
+          
+          <!-- Diğer Kurum -->
+          <div id="kurum-diger-container" class="form-group hidden">
+            <label class="form-label" for="kurum-diger">Diğer ise belirtiniz:</label>
+            <div>
+              <input type="text" id="kurum-diger" name="kurum-diger" class="form-control" placeholder="Kurum adını belirtiniz">
+            </div>
+          </div>
+          
+          <!-- STK Bilgileri -->
+          <div class="form-group">
+            <label class="form-label" for="stk-bilgileri">Varsa işbirliği yapılan STK'ların isimleri (Yoksa boş bırakınız):</label>
+            <div>
+              <textarea id="stk-bilgileri" name="stk-bilgileri" class="form-control text-area" rows="5" placeholder="STK bilgilerini giriniz"></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Genel Değerlendirme -->
+        <div class="form-section">
+          <h3>Genel Değerlendirme</h3>
+          
+          <!-- Değerlendirme Metni -->
+          <div class="form-group">
+            <label class="form-label">Genel Değerlendirme:</label>
+            <div>
+              <textarea id="genel-degerlendirme" name="genel-degerlendirme" class="form-control text-area" rows="12" placeholder="En az 100 harf olacak şekilde belirtiniz"></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Gönder Butonu -->
+        <div class="form-group">
+          <div style="margin-left: auto; width: 100%; text-align: center; margin-top: 30px;">
+            <button type="button" id="btn-gonder" class="btn btn-primary" style="padding: 12px 30px; font-size: 18px; width: 200px;">Gönder</button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="notification" class="notification hidden"></div>
+    </form>
+    
+    <!-- Gönderim Sonrası Popup -->
+    <div id="submit-popup" class="popup-container hidden">
+      <div class="popup-content">
+        <h4>Yeni etkinlik girmek ister misiniz?</h4>
+        <div class="popup-buttons">
+          <button type="button" id="btn-yeni-form" class="btn btn-primary">Evet</button>
+          <button type="button" id="btn-kapat" class="btn btn-secondary">Hayır</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>

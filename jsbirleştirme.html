@@ -1,0 +1,663 @@
+<script>
+// Değişkenler
+let epostaOnaylandiMi = false;
+let colMahalleListesi = [];
+let colEtkinlikTurleri = [];
+let colKurumlar = [];
+
+// DOM Elementleri
+const formDetay = document.getElementById('form-detay');
+const epostaInput = document.getElementById('eposta');
+const ilDropdown = document.getElementById('il');
+const ilceDropdown = document.getElementById('ilce');
+const mahalleDropdown = document.getElementById('mahalle');
+const mahalleDiger = document.getElementById('mahalle-diger');
+const notification = document.getElementById('notification');
+const epostaLoading = document.getElementById('eposta-loading');
+
+// Etkinlik Bilgileri Elementleri
+const etkinlikTuruContainer = document.getElementById('etkinlik-turu-container');
+const etkinlikDigerContainer = document.getElementById('etkinlik-diger-container');
+const etkinlikDigerInput = document.getElementById('etkinlik-diger');
+const etkinlikAdiInput = document.getElementById('etkinlik-adi');
+const etkinlikOzetiInput = document.getElementById('etkinlik-ozeti');
+const etkinlikTarihiInput = document.getElementById('etkinlik-tarihi');
+const kisiSayisiInput = document.getElementById('katilan-kisi-sayisi');
+const butceInput = document.getElementById('butce');
+
+// Kurum Bilgileri Elementleri
+const kurumListesi = document.getElementById('kurum-listesi');
+const kurumDigerContainer = document.getElementById('kurum-diger-container');
+const kurumDigerInput = document.getElementById('kurum-diger');
+const stkBilgileriInput = document.getElementById('stk-bilgileri');
+
+// Değerlendirme Elementleri
+const genelDegerlendirmeInput = document.getElementById('genel-degerlendirme');
+const btnGonder = document.getElementById('btn-gonder');
+const submitPopup = document.getElementById('submit-popup');
+const btnYeniForm = document.getElementById('btn-yeni-form');
+const btnKapat = document.getElementById('btn-kapat');
+
+// Fotoğraf Yükleme Elementleri
+const fileInput1 = document.getElementById('fileInput1');
+const fileInput2 = document.getElementById('fileInput2');
+const fileInput3 = document.getElementById('fileInput3');
+const preview1 = document.getElementById('preview1');
+const preview2 = document.getElementById('preview2');
+const preview3 = document.getElementById('preview3');
+const status1 = document.getElementById('status1');
+const status2 = document.getElementById('status2');
+const status3 = document.getElementById('status3');
+const uploadButton1 = document.getElementById('uploadButton1');
+const uploadButton2 = document.getElementById('uploadButton2');
+const uploadButton3 = document.getElementById('uploadButton3');
+
+
+// Sayfa Yüklendiğinde
+document.addEventListener('DOMContentLoaded', function() {
+  // Event Listeners
+  ilDropdown.addEventListener('change', ilDegisti);
+  ilceDropdown.addEventListener('change', ilceDegisti);
+  mahalleDropdown.addEventListener('change', mahalleDegisti);
+  kurumListesi.addEventListener('change', kurumDegisti);
+  fileInput1.addEventListener('change', () => handleFileSelect(fileInput1, 1));
+  fileInput2.addEventListener('change', () => handleFileSelect(fileInput2, 2));
+  fileInput3.addEventListener('change', () => handleFileSelect(fileInput3, 3));
+  btnGonder.addEventListener('click', formGonder);
+  btnYeniForm.addEventListener('click', yeniFormOlustur);
+  btnKapat.addEventListener('click', formKapat);
+  uploadButton1.addEventListener('click', function(e) {
+    e.preventDefault(); // Formun gönderimini engelle
+    fileInput1.click();
+  });
+  uploadButton2.addEventListener('click', function(e) {
+    e.preventDefault(); // Formun gönderimini engelle
+    fileInput2.click();
+  });
+  uploadButton3.addEventListener('click', function(e) {
+    e.preventDefault(); // Formun gönderimini engelle
+    fileInput3.click();
+  });
+
+  // Verileri önceden yükle
+  onPageLoad();
+});
+
+// Sayfa Yüklendiğinde Çalışacak Fonksiyon
+function onPageLoad() {
+  // Form detay bölümünü göster (artık e-posta kontrolü yapmıyoruz)
+  formDetay.classList.remove('hidden');
+  
+  // Etkinlik türlerini yükle
+  google.script.run
+    .withSuccessHandler(function(etkinlikTurleri) {
+      colEtkinlikTurleri = etkinlikTurleri;
+      loadEtkinlikTurleri();
+    })
+    .withFailureHandler(function(error) {
+      console.error("Etkinlik türleri yüklenirken hata:", error);
+    })
+    .getEtkinlikTurleri();
+  
+  // Kurumları yükle
+  google.script.run
+    .withSuccessHandler(function(kurumlar) {
+      colKurumlar = kurumlar;
+      loadKurumlar();
+    })
+    .withFailureHandler(function(error) {
+      console.error("Kurumlar yüklenirken hata:", error);
+    })
+    .getKurumlar();
+  
+  // İl verilerini yükle
+  loadIlVerileri();
+}
+
+// E-posta Kontrolü (Basitleştirilmiş versiyon)
+function epostaKontrol() {
+  const eposta = epostaInput.value.trim();
+  const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+  
+  if (!eposta || !emailRegex.test(eposta)) {
+    showNotification("Lütfen geçerli bir e-posta adresi giriniz.", "error");
+    return;
+  }
+  
+  // E-postayı localStorage'a kaydet
+  localStorage.setItem('formEposta', eposta);
+  
+  // Form detay bölümünü göster
+  epostaOnaylandiMi = true;
+  formDetay.classList.remove('hidden');
+  showNotification("Formu doldurabilirsiniz.", "success");
+}
+
+// Kurumlar yükleme fonksiyonu
+function loadKurumlar() {
+  if (kurumListesi.options.length > 0) return; // Zaten yüklüyse tekrar yükleme
+  
+  kurumListesi.innerHTML = '<option value="">Yükleniyor...</option>';
+  
+  google.script.run
+    .withSuccessHandler(function(kurumlar) {
+      colKurumlar = kurumlar;
+      kurumListesi.innerHTML = '';
+      
+      // Kurumları listeye ekle
+      kurumlar.forEach((kurum, index) => {
+        const option = document.createElement('option');
+        option.value = kurum;
+        option.textContent = kurum;
+        kurumListesi.appendChild(option);
+      });
+    })
+    .withFailureHandler(function(error) {
+      kurumListesi.innerHTML = '<option value="">Hata - Yeniden yüklemek için sayfayı yenileyin</option>';
+      showNotification("Kurumlar yüklenirken hata oluştu: " + error, "error");
+    })
+    .getKurumlar();
+}
+
+// Kurum seçimi değiştiğinde
+function kurumDegisti() {
+  const secilenKurumlar = Array.from(kurumListesi.selectedOptions).map(option => option.value);
+  
+  // Eğer "Diğer" seçilirse metin alanını göster
+  if (secilenKurumlar.includes("Diğer")) {
+    kurumDigerContainer.classList.remove('hidden');
+  } else {
+    kurumDigerContainer.classList.add('hidden');
+    kurumDigerInput.value = '';
+  }
+}
+
+// İl Verilerini Yükle
+function loadIlVerileri() {
+  // Loading göster (ilDropdown'a yükle)
+  ilDropdown.innerHTML = '<option value="">Yükleniyor...</option>';
+  ilDropdown.disabled = true;
+  
+  // Google Apps Script ile il verilerini getir
+  google.script.run
+    .withSuccessHandler(function(iller) {
+      // İl dropdown'ı güncelle
+      ilDropdown.innerHTML = '<option value="">Seçiniz</option>';
+      iller.forEach(il => {
+        const option = document.createElement('option');
+        option.value = il;
+        option.textContent = il;
+        ilDropdown.appendChild(option);
+      });
+      
+      ilDropdown.disabled = false;
+    })
+    .withFailureHandler(function(error) {
+      // Hata durumunda
+      ilDropdown.innerHTML = '<option value="">Hata - Yeniden yüklemek için sayfayı yenileyin</option>';
+      ilDropdown.disabled = true;
+      showNotification("İl verileri yüklenirken bir hata oluştu: " + error, "error");
+    })
+    .getIlVerileri();
+}
+
+// İl Değiştiğinde
+function ilDegisti() {
+  const secilenIl = ilDropdown.value;
+  
+  // İlçe dropdown'ı temizle
+  ilceDropdown.innerHTML = '<option value="">Yükleniyor...</option>';
+  ilceDropdown.disabled = true;
+  
+  // Mahalle dropdown'ı temizle
+  mahalleDropdown.innerHTML = '';
+  mahalleDiger.classList.add('hidden');
+  
+  if (!secilenIl) {
+    ilceDropdown.innerHTML = '<option value="">Önce il seçiniz</option>';
+    ilceDropdown.disabled = true;
+    return;
+  }
+  
+  // Google Apps Script ile ilçe verilerini getir
+  google.script.run
+    .withSuccessHandler(function(ilceler) {
+      // İlçe dropdown'ı güncelle
+      ilceDropdown.innerHTML = '<option value="">Seçiniz</option>';
+      ilceler.forEach(ilce => {
+        const option = document.createElement('option');
+        option.value = ilce;
+        option.textContent = ilce;
+        ilceDropdown.appendChild(option);
+      });
+      
+      ilceDropdown.disabled = false;
+    })
+    .withFailureHandler(function(error) {
+      // Hata durumunda
+      ilceDropdown.innerHTML = '<option value="">Hata - Yeniden yüklemek için sayfayı yenileyin</option>';
+      ilceDropdown.disabled = true;
+      showNotification("İlçe verileri yüklenirken bir hata oluştu: " + error, "error");
+    })
+    .getIlceler(secilenIl);
+}
+
+// İlçe Değiştiğinde
+function ilceDegisti() {
+  const secilenIlce = ilceDropdown.value;
+  
+  // Mahalle dropdown'ı temizle
+  mahalleDropdown.innerHTML = '<option value="">Yükleniyor...</option>';
+  mahalleDropdown.disabled = true;
+  mahalleDiger.classList.add('hidden');
+  
+  if (!secilenIlce) {
+    mahalleDropdown.innerHTML = '<option value="">Önce ilçe seçiniz</option>';
+    mahalleDropdown.disabled = true;
+    return;
+  }
+  
+  // Google Apps Script ile mahalle verilerini getir
+  google.script.run
+    .withSuccessHandler(function(mahalleler) {
+      // Mahalle listesini ayarla
+      colMahalleListesi = [...mahalleler];
+      
+      // Mahalle dropdown'ı güncelle
+      mahalleDropdown.innerHTML = '';
+      colMahalleListesi.forEach(mahalle => {
+        const option = document.createElement('option');
+        option.value = mahalle;
+        option.textContent = mahalle;
+        mahalleDropdown.appendChild(option);
+      });
+      
+      // "Diğer" seçeneği ekle
+      const digerOption = document.createElement('option');
+      digerOption.value = "Diğer";
+      digerOption.textContent = "Diğer";
+      mahalleDropdown.appendChild(digerOption);
+      
+      mahalleDropdown.disabled = false;
+    })
+    .withFailureHandler(function(error) {
+      // Hata durumunda
+      mahalleDropdown.innerHTML = '<option value="">Hata - Yeniden yüklemek için sayfayı yenileyin</option>';
+      mahalleDropdown.disabled = true;
+      showNotification("Mahalle verileri yüklenirken hata oluştu: " + error, "error");
+    })
+    .getMahalleler(secilenIlce);
+}
+
+// Mahalle Değiştiğinde
+function mahalleDegisti() {
+  // Seçilen mahalle değerlerini al (çoklu seçim olduğu için)
+  const secilenMahalleler = Array.from(mahalleDropdown.selectedOptions).map(option => option.value);
+  
+  // Eğer "Diğer" seçilirse metin alanını göster
+  if (secilenMahalleler.includes("Diğer")) {
+    mahalleDiger.classList.remove('hidden');
+  } else {
+    mahalleDiger.classList.add('hidden');
+    mahalleDiger.value = '';
+  }
+}
+
+// Etkinlik türlerini yükle
+function loadEtkinlikTurleri() {
+  etkinlikTuruContainer.innerHTML = '<div class="loading">Yükleniyor...</div>';
+  
+  google.script.run
+    .withSuccessHandler(function(etkinlikTurleri) {
+      colEtkinlikTurleri = etkinlikTurleri;
+      etkinlikTuruContainer.innerHTML = '';
+      
+      // Radio butonları oluştur
+      etkinlikTurleri.forEach((tur, index) => {
+        const radioItem = document.createElement('div');
+        radioItem.className = 'radio-item';
+        
+        const radioInput = document.createElement('input');
+        radioInput.type = 'radio';
+        radioInput.id = 'etkinlik-turu-' + index;
+        radioInput.name = 'etkinlik-turu';
+        radioInput.value = tur;
+        
+        const radioLabel = document.createElement('label');
+        radioLabel.htmlFor = 'etkinlik-turu-' + index;
+        radioLabel.textContent = tur;
+        
+        radioItem.appendChild(radioInput);
+        radioItem.appendChild(radioLabel);
+        etkinlikTuruContainer.appendChild(radioItem);
+        
+        // Radio değişim olayı
+        radioInput.addEventListener('change', function() {
+          // Tüm radio-item elementlerinden selected sınıfını kaldır
+          document.querySelectorAll('.radio-item').forEach(item => {
+            item.classList.remove('radio-selected');
+          });
+          
+          // Seçili olana radio-selected sınıfını ekle
+          if (this.checked) {
+            radioItem.classList.add('radio-selected');
+          }
+          
+          // Eğer "Diğer" seçildiyse diğer açıklama alanını göster
+          if (this.value === 'Diğer') {
+            etkinlikDigerContainer.classList.remove('hidden');
+          } else {
+            etkinlikDigerContainer.classList.add('hidden');
+            etkinlikDigerInput.value = '';
+          }
+        });
+      });
+    })
+    .withFailureHandler(function(error) {
+      etkinlikTuruContainer.innerHTML = '<div class="error">Etkinlik türleri yüklenemedi!</div>';
+      showNotification("Etkinlik türleri yüklenirken hata oluştu: " + error, "error");
+    })
+    .getEtkinlikTurleri();
+}
+
+// Dosya seçim işlemi
+function handleFileSelect(input, photoNumber) {
+  const file = input.files[0];
+  const preview = document.getElementById(`preview${photoNumber}`);
+  const status = document.getElementById(`status${photoNumber}`);
+  const il = ilDropdown.value || "il_yok"; // İl seçilmemişse varsayılan değer
+  const etkinlikAdi = etkinlikAdiInput.value.trim() || "etkinlik_yok"; // Etkinlik adı yoksa varsayılan değer
+
+  if (!file) return;
+
+  // Dosya boyutu kontrolü (10MB)
+  if (file.size > 10485760) {
+    status.textContent = `${file.name} 10MB'tan büyük olamaz.`;
+    status.className = 'status-message error';
+    return;
+  }
+
+  // Önizleme göster
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    preview.src = e.target.result;
+    preview.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+
+  // Yükleme durumunu güncelle
+  status.textContent = 'Yükleniyor...';
+  status.className = 'status-message';
+
+  // Base64'e çevirerek Google Apps Script'e gönder
+  const fileReader = new FileReader();
+  fileReader.onload = function(e) {
+    const base64Data = e.target.result.split(',')[1];
+    const fileName = `${il}_${etkinlikAdi}_${photoNumber}`; // Yeni dosya adı formatı
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        status.textContent = `${file.name} kaydedildi. (${fileName})`;
+        status.className = 'status-message success';
+      })
+      .withFailureHandler(function(error) {
+        status.textContent = `Hata: ${error.message}`;
+        status.className = 'status-message error';
+        console.error(error);
+      })
+      .uploadToDrive(base64Data, fileName, file.name); // Yeni parametre sıralaması
+  };
+  fileReader.readAsDataURL(file);
+}
+
+// Form Gönderme İşlemi
+function formGonder() {
+  // localStorage'dan e-postayı al
+  const eposta = localStorage.getItem('formEposta') || epostaInput.value.trim();
+  
+  // Form verilerini topla
+  const il = ilDropdown.value;
+  const ilce = ilceDropdown.value;
+  const secilenMahalleler = Array.from(mahalleDropdown.selectedOptions).map(option => option.value);
+  const mahalleDigerText = mahalleDiger.value.trim();
+  
+  // Etkinlik bilgileri
+  const etkinlikTuruElement = document.querySelector('input[name="etkinlik-turu"]:checked');
+  const etkinlikTuru = etkinlikTuruElement ? etkinlikTuruElement.value : "";
+  const etkinlikDiger = etkinlikDigerInput.value.trim();
+  const etkinlikAdi = etkinlikAdiInput.value.trim();
+  const etkinlikOzeti = etkinlikOzetiInput.value.trim();
+  const etkinlikTarihi = etkinlikTarihiInput.value;
+  const kisiSayisi = kisiSayisiInput.value.trim();
+  const butce = butceInput.value.trim();
+  
+  // Kurum bilgileri
+  const secilenKurumlar = Array.from(kurumListesi.selectedOptions)
+    .filter(option => option.value !== "Diğer")
+    .map(option => option.value);
+  const kurumDiger = kurumDigerInput.value.trim();
+  
+  // STK bilgileri
+  const stkBilgileri = stkBilgileriInput.value.trim();
+  
+  // Değerlendirme
+  const genelDegerlendirme = genelDegerlendirmeInput.value.trim();
+  
+  // Form doğrulama
+  if (!eposta) {
+    showNotification("E-posta bilgisi eksik. Lütfen e-posta girişi yapınız.", "error");
+    return;
+  }
+  
+  if (!il) {
+    showNotification("Lütfen il seçiniz.", "error");
+    return;
+  }
+  
+  if (!ilce) {
+    showNotification("Lütfen ilçe seçiniz.", "error");
+    return;
+  }
+  
+  if (secilenMahalleler.length === 0) {
+    showNotification("Lütfen en az bir mahalle seçiniz.", "error");
+    return;
+  }
+  
+  if (secilenMahalleler.includes("Diğer") && !mahalleDigerText) {
+    showNotification("'Diğer' seçeneğini seçtiyseniz lütfen mahalleyi belirtiniz.", "error");
+    return;
+  }
+  
+  if (!etkinlikTuru) {
+    showNotification("Lütfen bir etkinlik türü seçiniz.", "error");
+    return;
+  }
+  
+  if (etkinlikTuru === "Diğer" && !etkinlikDiger) {
+    showNotification("'Diğer' seçeneğini seçtiyseniz lütfen etkinlik türünü belirtiniz.", "error");
+    return;
+  }
+  
+  if (!etkinlikAdi) {
+    showNotification("Lütfen etkinlik adını giriniz.", "error");
+    return;
+  }
+  
+  if (!etkinlikOzeti || etkinlikOzeti.length < 50) {
+    showNotification("Lütfen en az 50 karakter içeren bir etkinlik özeti giriniz.", "error");
+    return;
+  }
+  
+  if (!etkinlikTarihi) {
+    showNotification("Lütfen etkinlik tarihini seçiniz.", "error");
+    return;
+  }
+  
+  if (!kisiSayisi || isNaN(Number(kisiSayisi)) || Number(kisiSayisi) <= 0) {
+    showNotification("Lütfen geçerli bir katılımcı sayısı giriniz.", "error");
+    return;
+  }
+  
+  if (!butce || isNaN(Number(butce)) || Number(butce) < 0) {
+    showNotification("Lütfen geçerli bir bütçe miktarı giriniz.", "error");
+    return;
+  }
+  
+  if (secilenKurumlar.length === 0 && !kurumDiger) {
+    showNotification("Lütfen en az bir kurum seçiniz veya 'Diğer' seçeneğini belirtiniz.", "error");
+    return;
+  }
+  
+  if (Array.from(kurumListesi.selectedOptions).some(option => option.value === "Diğer") && !kurumDiger) {
+    showNotification("'Diğer' seçeneğini seçtiyseniz lütfen kurum adını belirtiniz.", "error");
+    return;
+  }
+  
+  if (!genelDegerlendirme || genelDegerlendirme.length < 100) {
+    showNotification("Lütfen en az 100 karakter içeren bir genel değerlendirme giriniz.", "error");
+    return;
+  }
+  
+  // Mahalleleri birleştir
+  let mahalleText = "";
+  secilenMahalleler.forEach(function(mahalle) {
+    if (mahalle !== "Diğer") {
+      mahalleText += mahalle + ", ";
+    }
+  });
+  
+  if (secilenMahalleler.includes("Diğer")) {
+    mahalleText += mahalleDigerText;
+  } else {
+    // Son virgülü kaldır
+    mahalleText = mahalleText.substring(0, mahalleText.length - 2);
+  }
+  
+  // Kurumları birleştir
+  let kurumText = secilenKurumlar.join(", ");
+  if (kurumDiger) {
+    if (kurumText) kurumText += ", ";
+    kurumText += kurumDiger;
+  }
+  
+  // Etkinlik türünü düzenle
+  const finalEtkinlikTuru = etkinlikTuru === "Diğer" ? "Diğer: " + etkinlikDiger : etkinlikTuru;
+  
+  // Loading göster
+  btnGonder.disabled = true;
+  
+  // Form verilerini Google Apps Script'e gönder
+  google.script.run
+    .withSuccessHandler(function(result) {
+      // İşlem başarılı olduğunda
+      btnGonder.disabled = false;
+      
+      if (result.success) {
+        showNotification("Formunuz başarıyla gönderildi.", "success");
+        
+        // Popup göster
+        setTimeout(function() {
+          submitPopup.classList.remove('hidden');
+        }, 1500);
+      } else {
+        showNotification("Form gönderilirken bir hata oluştu: " + result.message, "error");
+      }
+    })
+    .withFailureHandler(function(error) {
+      // Hata durumunda
+      btnGonder.disabled = false;
+      showNotification("Form gönderilirken bir hata oluştu: " + error, "error");
+    })
+    .submitFinalForm({
+      eposta: eposta,
+      il: il,
+      ilce: ilce,
+      mahalle: mahalleText,
+      etkinlikTuru: finalEtkinlikTuru,
+      etkinlikAdi: etkinlikAdi,
+      etkinlikOzeti: etkinlikOzeti,
+      etkinlikTarihi: etkinlikTarihi,
+      kisiSayisi: kisiSayisi,
+      butce: butce,
+      kurumlar: kurumText,
+      stkBilgileri: stkBilgileri,
+      genelDegerlendirme: genelDegerlendirme
+    });
+}
+
+// Yeni Form Oluşturma (Evet butonuna tıklandığında)
+function yeniFormOlustur() {
+  // Form verilerini temizle
+  localStorage.removeItem('formEposta');
+  
+  // Tüm form alanlarını sıfırla
+  epostaInput.value = '';
+  
+  // İl/İlçe/Mahalle dropdown'larını sıfırla
+  ilDropdown.innerHTML = '<option value="">Seçiniz</option>';
+  ilceDropdown.innerHTML = '<option value="">Önce il seçiniz</option>';
+  ilceDropdown.disabled = true;
+  mahalleDropdown.innerHTML = '<option value="">Önce ilçe seçiniz</option>';
+  mahalleDropdown.disabled = true;
+  mahalleDiger.value = '';
+  mahalleDiger.classList.add('hidden');
+  
+  // Etkinlik bilgilerini temizle
+  const radioButtons = etkinlikTuruContainer.querySelectorAll('input[type="radio"]');
+  radioButtons.forEach(radio => {
+    radio.checked = false;
+    // Radio seçim stilini de kaldır
+    radio.closest('.radio-item').classList.remove('radio-selected');
+  });
+  etkinlikDigerInput.value = '';
+  etkinlikDigerContainer.classList.add('hidden');
+  etkinlikAdiInput.value = '';
+  etkinlikOzetiInput.value = '';
+  etkinlikTarihiInput.value = '';
+  kisiSayisiInput.value = '';
+  butceInput.value = '';
+  
+  // Kurum bilgilerini temizle
+  for (let i = 0; i < kurumListesi.options.length; i++) {
+    kurumListesi.options[i].selected = false;
+  }
+  kurumDigerInput.value = '';
+  kurumDigerContainer.classList.add('hidden');
+  stkBilgileriInput.value = '';
+  
+  // Değerlendirme bilgilerini temizle
+  genelDegerlendirmeInput.value = '';
+  
+  // Popup'ı gizle
+  submitPopup.classList.add('hidden');
+  
+  // Durumları sıfırla
+  epostaOnaylandiMi = false;
+  
+  // Sayfayı en üste kaydır (kullanıcı deneyimi için)
+  window.scrollTo(0, 0);
+  
+  // İl verilerini yeniden yükle (dropdown'ları doldurmak için)
+  loadIlVerileri();
+}
+
+// Form Kapatma (Hayır butonuna tıklandığında)
+function formKapat() {
+  // Popup'ı gizle
+  submitPopup.classList.add('hidden');
+  btnGonder.disabled = true;
+}
+
+// Bildirim gösterme fonksiyonu
+function showNotification(message, type) {
+  notification.textContent = message;
+  notification.className = "notification " + type;
+  notification.classList.remove('hidden');
+  
+  // 5 saniye sonra bildirim otomatik kapanacak
+  setTimeout(() => {
+    notification.classList.add('hidden');
+  }, 5000);
+}
+</script>
